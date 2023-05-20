@@ -1,0 +1,20 @@
+{
+  "name": "paul",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "pm2 start pm2.config.cjs",
+    "test": "pm2 stop",
+    "save": "pm2 save"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@project-chip/matter-node.js": "^0.4.0",
+    "fastify": "^4.17.0",
+    "node-fetch": "^3.3.1",
+    "rpio": "^2.4.2"
+  }
+}
