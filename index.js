@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { CommissioningServer, MatterServer } from '@project-chip/matter-node.js'
 import { Time } from '@project-chip/matter-node.js/time'
-import { OnOffLightDevice, DeviceTypes } from '@project-chip/matter-node.js/device'
+import { OnOffLightDevice } from '@project-chip/matter-node.js/device'
 import { VendorId } from '@project-chip/matter-node.js/datatype'
 import { StorageManager, StorageBackendDisk } from '@project-chip/matter-node.js/storage'
 import { Logger, Level } from '@project-chip/matter-node.js/log'
@@ -11,7 +11,7 @@ const gpioPins = [3, 5, 7, 8, 10, 11, 12, 13, 15, 16, 18, 19, 21, 22, 23, 24, 26
 if (!gpioPins.includes(pin)) throw new Error(`Pin ${pin} does not exist`)
 Logger.defaultLogLevel = Level.INFO
 const storage = new StorageBackendDisk('storage/' + pin)
-class BridgedDevice {
+class Device {
     async start() {
         const storageManager = new StorageManager(storage)
         await storageManager.initialize()
@@ -27,24 +27,27 @@ class BridgedDevice {
         deviceStorage.set('productid', productId)
         deviceStorage.set('isSocket', isSocket)
         const matterServer = new MatterServer(storageManager)
-        const commissioningServer = new CommissioningServer({
+        
+        const onOffDevice = new OnOffLightDevice()
+        onOffDevice.addOnOffListener(on => fetch(`http://127.0.0.1/${pin}/${on ? 1 : 0}`))
+        onOffDevice.addCommandHandler('identify', async ({ request: { identifyTime } }) => console.log(`Identify call OnOffDevice: ${identifyTime}`))
+ 
+	const commissioningServer = new CommissioningServer({
             port: 5540 + pin,
-            deviceName: 'Paul Smart Home',
-            deviceType: DeviceTypes.ON_OFF_LIGHT.code,
+            deviceName: 'Hiro Switch ' + pin,
+            deviceType: onOffDevice.deviceType,
             passcode,
             discriminator,
             basicInformation: {
-                vendorName: 'Marin Bivol',
+                vendorName: 'Realtime Systems',
                 vendorId,
                 productName: 'PB-Lights',
                 productId,
-                serialNumber: `node-matter-${Time.nowMs()}`,
+                serialNumber: `hiro-matter-${Time.nowMs()}`,
             }
         })
-        const onOffDevice = new OnOffLightDevice()
-        onOffDevice.addOnOffListener(on => fetch(`http://127.0.0.1/${pin}/${on ? 1 : 0}`))
-        onOffDevice.addCommandHandler('identify', async ({ request: { identifyTime } }) => console.log(`Identify called for OnOffDevice: ${identifyTime}`))
-        commissioningServer.addDevice(onOffDevice)
+        
+	commissioningServer.addDevice(onOffDevice)
         matterServer.addCommissioningServer(commissioningServer)
         await matterServer.start()
         if (!commissioningServer.isCommissioned()) {
@@ -58,5 +61,7 @@ class BridgedDevice {
     }
 }
 
-new BridgedDevice().start().then(() => { /* done */ }).catch(err => console.error(err))
-process.on('SIGINT', () => storage.close().then(() => process.exit(0)).catch(err => console.error(err)))
+new Device().start().then(() => { /* done */ }).catch(err => console.error(err))
+process.on('SIGINT', () => storage.close().then(() => process.exit(0)).catch(console.error))
+
+
