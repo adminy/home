@@ -20,6 +20,8 @@ const updatePin = (pin, on) => {
    return {[pin]: states[pin]}
 }
 
+app.get('/', () => states)
+
 app.get('/:pin/:on', req => {
    const pin = parseInt(req.params.pin)
    const on = parseInt(req.params.on)
